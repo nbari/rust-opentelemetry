@@ -1,8 +1,9 @@
-build:
-    docker build -t my-postgres-db ./
+up:
+    docker-compose up
 
-run:
-    docker run -d --name my-postgresdb-container -p 5432:5432 my-postgres-db
+down:
+    docker-compose down
 
 load:
-    psql -h localhost -U postgres demo < demo.sql
+    # psql -h localhost -U postgres -XtAc "SELECT 1 FROM pg_database WHERE datname='demo'"
+    psql -h localhost -U postgres demo < data/demo.sql

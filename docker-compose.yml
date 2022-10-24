@@ -1,0 +1,64 @@
+version: '3.0'
+
+services:
+  timescaledb:
+    image: timescale/timescaledb-ha:pg14-latest
+    restart: on-failure
+    ports:
+      - 5432:5432/tcp
+    volumes:
+      - ${PWD}/data/timescale:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+      POSTGRES_DB: tsdb
+      POSTGRES_HOST_AUTH_METHOD: trust
+
+  promscale:
+    image: timescale/promscale:latest
+    restart: on-failure
+    ports:
+      - 9201:9201/tcp
+      - 9202:9202/tcp
+    depends_on:
+      - timescaledb
+    volumes:
+      - ${PWD}/data/promscale/promscale_prometheus.yml:/prometheus.yml
+      - ${PWD}/data/promscale/rules.yml:/rules.yml
+      - ${PWD}/data/promscale/alerts.yml:/alerts.yml
+    environment:
+      PROMSCALE_DB_URI: postgres://postgres:password@timescaledb:5432/tsdb?sslmode=allow
+      PROMSCALE_METRICS_RULES_CONFIG_FILE: /prometheus.yml
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: on-failure
+    depends_on:
+      - promscale
+    ports:
+      - 9090:9090/tcp
+    volumes:
+      - ${PWD}/data/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    restart: on-failure
+    ports:
+      - 9093:9093/tcp
+
+  node_exporter:
+    image: quay.io/prometheus/node-exporter
+    restart: on-failure
+    ports:
+      - "9100:9100"
+
+  grafana:
+    image: vineeth97/promscale-demo-grafana
+    restart: on-failure
+    ports:
+      - 3000:3000/tcp
+    volumes:
+      - ${PWD}/data/grafana:/var/lib/grafana
+    depends_on:
+      - timescaledb
+      - promscale
